@@ -1,14 +1,17 @@
 package com.hmdp.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.dto.LoginFormDTO;
 import com.hmdp.dto.Result;
+import com.hmdp.dto.UserDTO;
 import com.hmdp.entity.User;
 import com.hmdp.mapper.UserMapper;
 import com.hmdp.service.IUserService;
 import com.hmdp.utils.RegexUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpSession;
@@ -54,9 +57,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             return Result.fail("手机号格式错误");
         }
         //校验验证码
-        Object cachecode = session.getAttribute("code");
+        Object cacheCode = session.getAttribute("code");
         String code = loginForm.getCode();
-        if(cachecode==null||!cachecode.equals(code)){
+        if(cacheCode==null||!cacheCode.toString().equals(code)){
             //不一致，报错
             return Result.fail("验证码错误");
         }
@@ -69,8 +72,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             user = createUserWithPhone(phone);
         }
         //用户存在，保存用户信息到session
-        session.setAttribute("user", user);
-        return null;
+        session.setAttribute("user", BeanUtil.copyProperties(user, UserDTO.class));
+        return Result.ok();
     }
 
     private User createUserWithPhone(String phone) {
