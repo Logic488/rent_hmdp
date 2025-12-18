@@ -9,7 +9,9 @@ import com.hmdp.service.IVoucherOrderService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.utils.RedisIdWorker;
 import com.hmdp.utils.UserHolder;
+import org.springframework.aop.framework.AopContext;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
@@ -50,7 +52,27 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             //不充足，返回异常结果
             return Result.fail("库存不足");
         }
-        //充足，扣减库存
+
+        Long userId = UserHolder.getUser().getId();
+        synchronized (userId.toString().intern()) {
+            IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();
+            return proxy.createVoucherOrder(voucherId);
+        }
+    }
+
+    @Transactional
+    public Result createVoucherOrder(Long voucherId) {
+        //充足，根据优惠券id和用户id查询订单(一人一单)
+        Long userId = UserHolder.getUser().getId();
+
+        int count = query().eq("user_id", userId).eq("voucher_id", voucherId).count();
+        //判断是否存在
+        if(count > 0){
+            //用户已经购买过了
+            return Result.fail("用户已经购买过一次！");
+        }
+
+        // 扣减库存
         boolean success = seckillVoucherService.update()
                 .setSql("stock = stock - 1") //set stocj = stock -1
                 .eq("voucher_id", voucherId).gt("stock", 0) // where id = ? and stock > 0
@@ -65,7 +87,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         long orderId = redisIdWorker.nextId("order");
         voucherOrder.setId(orderId);
         //用户id
-        Long userId = UserHolder.getUser().getId();
+//        Long userId = UserHolder.getUser().getId();
         voucherOrder.setUserId(userId);
         //代金券id
         voucherOrder.setVoucherId(voucherId);
@@ -73,5 +95,6 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
         //返回订单id
         return Result.ok(orderId);
+
     }
 }
