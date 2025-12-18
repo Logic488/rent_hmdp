@@ -27,6 +27,7 @@ public class MVConfig implements WebMvcConfigurer {
                         "/blog/hot",
                         "/user/code",
                         "/user/login"
+
                 ).order(1);
 
         //token刷新拦截器，第一层拦截器，拦截所有请求。order()控制拦截顺序，括号中值越小越靠前执行
